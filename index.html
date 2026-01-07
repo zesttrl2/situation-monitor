@@ -306,6 +306,75 @@
             outline-offset: -2px;
         }
 
+        /* Resizable panels */
+        .panel {
+            position: relative;
+            resize: none;
+        }
+
+        .panel-resize-handle {
+            position: absolute;
+            background: transparent;
+            z-index: 10;
+        }
+
+        .panel-resize-handle.corner {
+            width: 16px;
+            height: 16px;
+            bottom: 0;
+            right: 0;
+            cursor: nwse-resize;
+        }
+
+        .panel-resize-handle.corner::before {
+            content: '';
+            position: absolute;
+            bottom: 3px;
+            right: 3px;
+            width: 8px;
+            height: 8px;
+            border-right: 2px solid var(--border);
+            border-bottom: 2px solid var(--border);
+            opacity: 0.5;
+            transition: all 0.2s ease;
+        }
+
+        .panel:hover .panel-resize-handle.corner::before {
+            opacity: 1;
+            border-color: var(--text-dim);
+        }
+
+        .panel-resize-handle.corner:hover::before {
+            border-color: var(--accent);
+            width: 10px;
+            height: 10px;
+        }
+
+        .panel-resize-handle.bottom {
+            height: 6px;
+            left: 0;
+            right: 16px;
+            bottom: 0;
+            cursor: ns-resize;
+        }
+
+        .panel-resize-handle.right {
+            width: 6px;
+            top: 0;
+            bottom: 16px;
+            right: 0;
+            cursor: ew-resize;
+        }
+
+        .panel.resizing {
+            user-select: none;
+            transition: none;
+        }
+
+        .panel.resizing * {
+            pointer-events: none;
+        }
+
         .panel-header {
             padding: 0.75rem 1rem;
             border-bottom: 1px solid var(--border);
@@ -590,6 +659,93 @@
             left: 0;
             width: 100%;
             height: 100%;
+        }
+
+        /* Zoomable map container */
+        .map-zoom-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform-origin: center center;
+            transition: transform 0.3s ease;
+        }
+
+        .map-zoom-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 50;
+        }
+
+        .map-zoom-btn {
+            width: 28px;
+            height: 28px;
+            background: rgba(0, 30, 20, 0.9);
+            border: 1px solid #0f6040;
+            color: #00ff88;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .map-zoom-btn:hover {
+            background: rgba(0, 60, 40, 0.9);
+            border-color: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
+        }
+
+        .map-zoom-btn:active {
+            transform: scale(0.95);
+        }
+
+        .map-zoom-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .map-zoom-level {
+            font-size: 0.55rem;
+            color: #0f6040;
+            text-align: center;
+            padding: 2px 0;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .map-zoom-reset {
+            font-size: 0.6rem;
+            padding: 4px 6px;
+            width: auto;
+            height: auto;
+        }
+
+        /* Pan hint */
+        .map-pan-hint {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.5rem;
+            color: #0f6040;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 50;
+            pointer-events: none;
+        }
+
+        .world-map:hover .map-pan-hint.show {
+            opacity: 0.7;
         }
 
         .map-overlays {
@@ -2049,7 +2205,7 @@
             }
         }
 
-        /* Conflict Zone Boundaries */
+        /* Conflict Zone Boundaries - Enhanced Overlays */
         .conflict-zone-path {
             fill: none;
             stroke: #ff3333;
@@ -2063,39 +2219,100 @@
         .conflict-zone-path.high-intensity {
             stroke: #ff0000;
             stroke-width: 3;
-            filter: drop-shadow(0 0 4px rgba(255, 0, 0, 0.6));
+            filter: drop-shadow(0 0 6px rgba(255, 0, 0, 0.8));
+            animation: conflict-march 0.8s linear infinite, conflict-pulse 2s ease-in-out infinite;
         }
 
         .conflict-zone-fill {
-            fill: rgba(255, 50, 50, 0.1);
+            fill: rgba(255, 50, 50, 0.08);
             stroke: none;
+            animation: conflict-fill-pulse 3s ease-in-out infinite;
+        }
+
+        .conflict-zone-fill.high-intensity {
+            fill: rgba(255, 30, 30, 0.15);
+            animation: conflict-fill-pulse 2s ease-in-out infinite;
+        }
+
+        /* Conflict zone inner glow effect */
+        .conflict-zone-glow {
+            fill: none;
+            stroke: rgba(255, 50, 50, 0.4);
+            stroke-width: 8;
+            filter: blur(4px);
+            animation: conflict-glow-pulse 2s ease-in-out infinite;
         }
 
         .conflict-zone-label {
             position: absolute;
-            font-size: 0.5rem;
-            color: #ff3333;
+            font-size: 0.55rem;
+            color: #ff4444;
             text-transform: uppercase;
             letter-spacing: 0.1em;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 0.15rem 0.4rem;
+            background: rgba(20, 0, 0, 0.85);
+            padding: 0.2rem 0.5rem;
             border: 1px solid #ff3333;
             pointer-events: auto;
             cursor: pointer;
             white-space: nowrap;
-            animation: blink 2s ease-in-out infinite;
+            animation: conflict-label-pulse 2s ease-in-out infinite;
             transition: all 0.2s ease;
+            box-shadow: 0 0 10px rgba(255, 50, 50, 0.3), inset 0 0 8px rgba(255, 50, 50, 0.1);
+        }
+
+        .conflict-zone-label::before {
+            content: '⚠';
+            margin-right: 4px;
+            font-size: 0.6rem;
+        }
+
+        .conflict-zone-label.high-intensity {
+            border-color: #ff0000;
+            color: #ff0000;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.5), inset 0 0 10px rgba(255, 0, 0, 0.2);
+            animation: conflict-label-pulse-high 1.5s ease-in-out infinite;
+        }
+
+        .conflict-zone-label.high-intensity::before {
+            content: '🔴';
+            animation: rotate 4s linear infinite;
         }
 
         .conflict-zone-label:hover {
-            background: rgba(255, 51, 51, 0.3);
-            transform: scale(1.1);
-            box-shadow: 0 0 15px rgba(255, 51, 51, 0.6);
+            background: rgba(60, 0, 0, 0.95);
+            transform: scale(1.15);
+            box-shadow: 0 0 20px rgba(255, 51, 51, 0.7), inset 0 0 15px rgba(255, 50, 50, 0.3);
             animation: none;
+            z-index: 100;
         }
 
         @keyframes conflict-march {
             to { stroke-dashoffset: -12; }
+        }
+
+        @keyframes conflict-pulse {
+            0%, 100% { stroke-width: 3; }
+            50% { stroke-width: 4; }
+        }
+
+        @keyframes conflict-fill-pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        @keyframes conflict-glow-pulse {
+            0%, 100% { opacity: 0.3; stroke-width: 8; }
+            50% { opacity: 0.6; stroke-width: 12; }
+        }
+
+        @keyframes conflict-label-pulse {
+            0%, 100% { opacity: 0.9; box-shadow: 0 0 10px rgba(255, 50, 50, 0.3), inset 0 0 8px rgba(255, 50, 50, 0.1); }
+            50% { opacity: 1; box-shadow: 0 0 15px rgba(255, 50, 50, 0.5), inset 0 0 10px rgba(255, 50, 50, 0.2); }
+        }
+
+        @keyframes conflict-label-pulse-high {
+            0%, 100% { opacity: 0.9; box-shadow: 0 0 15px rgba(255, 0, 0, 0.5), inset 0 0 10px rgba(255, 0, 0, 0.2); }
+            50% { opacity: 1; box-shadow: 0 0 25px rgba(255, 0, 0, 0.7), inset 0 0 15px rgba(255, 0, 0, 0.3); }
         }
 
         /* Military Base Markers */
@@ -3684,12 +3901,224 @@
             location.reload();
         }
 
+        // ========== MAP ZOOM FUNCTIONALITY ==========
+        let mapZoom = 1;
+        let mapPan = { x: 0, y: 0 };
+        let isPanning = false;
+        let panStart = { x: 0, y: 0 };
+        const MAP_ZOOM_MIN = 1;
+        const MAP_ZOOM_MAX = 4;
+        const MAP_ZOOM_STEP = 0.5;
+
+        function mapZoomIn() {
+            if (mapZoom < MAP_ZOOM_MAX) {
+                mapZoom = Math.min(MAP_ZOOM_MAX, mapZoom + MAP_ZOOM_STEP);
+                applyMapTransform();
+            }
+        }
+
+        function mapZoomOut() {
+            if (mapZoom > MAP_ZOOM_MIN) {
+                mapZoom = Math.max(MAP_ZOOM_MIN, mapZoom - MAP_ZOOM_STEP);
+                // Reset pan if zooming back to 1x
+                if (mapZoom === 1) {
+                    mapPan = { x: 0, y: 0 };
+                }
+                applyMapTransform();
+            }
+        }
+
+        function mapZoomReset() {
+            mapZoom = 1;
+            mapPan = { x: 0, y: 0 };
+            applyMapTransform();
+        }
+
+        function applyMapTransform() {
+            const wrapper = document.getElementById('mapZoomWrapper');
+            const levelDisplay = document.getElementById('mapZoomLevel');
+            const panHint = document.getElementById('mapPanHint');
+
+            if (wrapper) {
+                wrapper.style.transform = `scale(${mapZoom}) translate(${mapPan.x}px, ${mapPan.y}px)`;
+            }
+            if (levelDisplay) {
+                levelDisplay.textContent = `${mapZoom.toFixed(1)}x`;
+            }
+            if (panHint) {
+                panHint.classList.toggle('show', mapZoom > 1);
+            }
+        }
+
+        // Map panning with mouse drag
+        function initMapPan() {
+            const container = document.getElementById('worldMapContainer');
+            if (!container) return;
+
+            container.addEventListener('mousedown', (e) => {
+                if (mapZoom <= 1) return;
+                if (e.target.closest('.map-zoom-controls')) return;
+
+                isPanning = true;
+                panStart = { x: e.clientX - mapPan.x * mapZoom, y: e.clientY - mapPan.y * mapZoom };
+                container.style.cursor = 'grabbing';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isPanning) return;
+
+                const maxPan = (mapZoom - 1) * 200;
+                mapPan.x = Math.max(-maxPan, Math.min(maxPan, (e.clientX - panStart.x) / mapZoom));
+                mapPan.y = Math.max(-maxPan, Math.min(maxPan, (e.clientY - panStart.y) / mapZoom));
+                applyMapTransform();
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isPanning) {
+                    isPanning = false;
+                    const container = document.getElementById('worldMapContainer');
+                    if (container) container.style.cursor = '';
+                }
+            });
+
+            // Mouse wheel zoom
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                if (e.deltaY < 0) {
+                    mapZoomIn();
+                } else {
+                    mapZoomOut();
+                }
+            }, { passive: false });
+        }
+
+        // ========== PANEL RESIZE FUNCTIONALITY ==========
+        let resizingPanel = null;
+        let resizeStart = { x: 0, y: 0, width: 0, height: 0 };
+        let resizeDirection = null;
+
+        function initPanelResize() {
+            // Add resize handles to all panels
+            document.querySelectorAll('.panel').forEach(panel => {
+                // Skip if already has handles
+                if (panel.querySelector('.panel-resize-handle')) return;
+
+                // Corner handle (for both width and height)
+                const cornerHandle = document.createElement('div');
+                cornerHandle.className = 'panel-resize-handle corner';
+                cornerHandle.addEventListener('mousedown', (e) => startResize(e, panel, 'corner'));
+                panel.appendChild(cornerHandle);
+
+                // Bottom edge handle (height only)
+                const bottomHandle = document.createElement('div');
+                bottomHandle.className = 'panel-resize-handle bottom';
+                bottomHandle.addEventListener('mousedown', (e) => startResize(e, panel, 'bottom'));
+                panel.appendChild(bottomHandle);
+
+                // Right edge handle (width only)
+                const rightHandle = document.createElement('div');
+                rightHandle.className = 'panel-resize-handle right';
+                rightHandle.addEventListener('mousedown', (e) => startResize(e, panel, 'right'));
+                panel.appendChild(rightHandle);
+            });
+        }
+
+        function startResize(e, panel, direction) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            resizingPanel = panel;
+            resizeDirection = direction;
+            resizeStart = {
+                x: e.clientX,
+                y: e.clientY,
+                width: panel.offsetWidth,
+                height: panel.offsetHeight
+            };
+
+            panel.classList.add('resizing');
+            document.body.style.cursor = direction === 'corner' ? 'nwse-resize' :
+                                         direction === 'bottom' ? 'ns-resize' : 'ew-resize';
+        }
+
+        document.addEventListener('mousemove', (e) => {
+            if (!resizingPanel) return;
+
+            const deltaX = e.clientX - resizeStart.x;
+            const deltaY = e.clientY - resizeStart.y;
+
+            if (resizeDirection === 'corner' || resizeDirection === 'right') {
+                const newWidth = Math.max(200, resizeStart.width + deltaX);
+                resizingPanel.style.width = newWidth + 'px';
+                resizingPanel.style.minWidth = newWidth + 'px';
+                resizingPanel.style.maxWidth = newWidth + 'px';
+            }
+
+            if (resizeDirection === 'corner' || resizeDirection === 'bottom') {
+                const newHeight = Math.max(150, resizeStart.height + deltaY);
+                resizingPanel.style.minHeight = newHeight + 'px';
+                resizingPanel.style.maxHeight = newHeight + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (resizingPanel) {
+                resizingPanel.classList.remove('resizing');
+                // Save panel sizes to localStorage
+                savePanelSizes();
+                resizingPanel = null;
+                resizeDirection = null;
+                document.body.style.cursor = '';
+            }
+        });
+
+        function savePanelSizes() {
+            const sizes = {};
+            document.querySelectorAll('.panel').forEach(panel => {
+                const panelName = panel.getAttribute('data-panel');
+                if (panelName && (panel.style.minHeight || panel.style.width)) {
+                    sizes[panelName] = {
+                        height: panel.style.minHeight,
+                        width: panel.style.width
+                    };
+                }
+            });
+            localStorage.setItem('panelSizes', JSON.stringify(sizes));
+        }
+
+        function restorePanelSizes() {
+            const saved = localStorage.getItem('panelSizes');
+            if (!saved) return;
+
+            try {
+                const sizes = JSON.parse(saved);
+                Object.entries(sizes).forEach(([panelName, dims]) => {
+                    const panel = document.querySelector(`.panel[data-panel="${panelName}"]`);
+                    if (panel) {
+                        if (dims.height) {
+                            panel.style.minHeight = dims.height;
+                            panel.style.maxHeight = dims.height;
+                        }
+                        if (dims.width) {
+                            panel.style.width = dims.width;
+                            panel.style.minWidth = dims.width;
+                            panel.style.maxWidth = dims.width;
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error('Failed to restore panel sizes:', e);
+            }
+        }
+
         // Initialize panel settings and livestream on load
         document.addEventListener('DOMContentLoaded', () => {
             applyPanelSettings();
             restorePanelOrder();
+            restorePanelSizes();
             updateLivestreamEmbed();
             initDragAndDrop();
+            initPanelResize();
         });
 
         const CORS_PROXIES = [
@@ -4360,8 +4789,17 @@
             // Set up the container
             panel.innerHTML = `
                 <div class="world-map" id="worldMapContainer">
-                    <svg id="worldMapSVG"></svg>
-                    <div class="map-overlays" id="mapOverlays"></div>
+                    <div class="map-zoom-wrapper" id="mapZoomWrapper">
+                        <svg id="worldMapSVG"></svg>
+                        <div class="map-overlays" id="mapOverlays"></div>
+                    </div>
+                    <div class="map-zoom-controls">
+                        <button class="map-zoom-btn" onclick="mapZoomIn()" title="Zoom In">+</button>
+                        <div class="map-zoom-level" id="mapZoomLevel">1.0x</div>
+                        <button class="map-zoom-btn" onclick="mapZoomOut()" title="Zoom Out">−</button>
+                        <button class="map-zoom-btn map-zoom-reset" onclick="mapZoomReset()" title="Reset">RST</button>
+                    </div>
+                    <div class="map-pan-hint" id="mapPanHint">DRAG TO PAN</div>
                     <div class="map-corner-label tl">GLOBAL ACTIVITY MONITOR</div>
                     <div class="map-corner-label tr">CLASSIFICATION: OPEN SOURCE</div>
                     <div class="map-corner-label bl">⚓ SHIP | ☢ NUKES | ▪ BASES | ═ CABLES</div>
@@ -4491,16 +4929,22 @@
                         const points = zone.coords.map(c => projection([c[0], c[1]]));
                         if (points.length > 0) {
                             const pathData = 'M' + points.map(p => p.join(',')).join('L') + 'Z';
+                            const isHigh = zone.intensity === 'high';
+
+                            // Glow effect layer (behind fill)
+                            conflictGroup.append('path')
+                                .attr('d', pathData)
+                                .attr('class', 'conflict-zone-glow');
 
                             // Fill for zone area
                             conflictGroup.append('path')
                                 .attr('d', pathData)
-                                .attr('class', 'conflict-zone-fill');
+                                .attr('class', `conflict-zone-fill ${isHigh ? 'high-intensity' : ''}`);
 
                             // Animated border
                             conflictGroup.append('path')
                                 .attr('d', pathData)
-                                .attr('class', `conflict-zone-path ${zone.intensity === 'high' ? 'high-intensity' : ''}`);
+                                .attr('class', `conflict-zone-path ${isHigh ? 'high-intensity' : ''}`);
                         }
                     });
                 }
@@ -4558,8 +5002,9 @@
             if (mapLayers.conflicts) {
                 CONFLICT_ZONES.forEach(zone => {
                     const pos = toPercent(zone.labelPos.lon, zone.labelPos.lat);
+                    const intensityClass = zone.intensity === 'high' ? 'high-intensity' : '';
                     overlaysHTML += `
-                        <div class="conflict-zone-label" style="left: ${pos.x}%; top: ${pos.y}%;">
+                        <div class="conflict-zone-label ${intensityClass}" style="left: ${pos.x}%; top: ${pos.y}%;">
                             ${zone.name}
                         </div>
                     `;
@@ -4780,6 +5225,9 @@
             `;
 
             document.getElementById('mapOverlays').innerHTML = overlaysHTML;
+
+            // Initialize map pan functionality after render
+            initMapPan();
 
             // Close popups when clicking outside
             document.getElementById('worldMapContainer').addEventListener('click', (e) => {
