@@ -157,27 +157,43 @@ export function renderCongressTrades(trades) {
     const count = document.getElementById('congressCount');
 
     if (trades.length === 0) {
-        panel.innerHTML = '<div class="error-msg">Unable to load congressional trades</div>';
+        panel.innerHTML = '<div class="error-msg">Unable to load congressional trade news</div>';
         count.textContent = '0';
         return;
     }
 
-    panel.innerHTML = trades.map(t => `
-        <div class="congress-item">
-            <div class="congress-info">
-                <div>
-                    <span class="congress-name">${t.name}</span>
-                    <span class="congress-party ${t.party}">${t.party}</span>
+    // Check if these are news items (new format) or trades (old format)
+    const isNews = trades[0]?.isNews;
+
+    if (isNews) {
+        panel.innerHTML = trades.map(t => `
+            <div class="congress-item">
+                <div class="congress-info" style="width: 100%;">
+                    <a href="${t.link}" target="_blank" class="congress-name" style="font-size: 0.65rem; line-height: 1.3; display: block;">
+                        ${escapeHtml(t.name)}
+                    </a>
+                    <div class="congress-meta">${t.date ? timeAgo(t.date) : ''}</div>
                 </div>
-                <div class="congress-ticker">${t.ticker}</div>
-                <div class="congress-meta">${timeAgo(t.date)} · ${t.district}</div>
             </div>
-            <div class="congress-type">
-                <span class="congress-action ${t.type}">${t.type.toUpperCase()}</span>
-                <div class="congress-amount">${t.amount}</div>
+        `).join('');
+    } else {
+        panel.innerHTML = trades.map(t => `
+            <div class="congress-item">
+                <div class="congress-info">
+                    <div>
+                        <span class="congress-name">${escapeHtml(t.name)}</span>
+                        <span class="congress-party ${t.party}">${t.party}</span>
+                    </div>
+                    <div class="congress-ticker">${t.ticker}</div>
+                    <div class="congress-meta">${timeAgo(t.date)}${t.district ? ' · ' + t.district : ''}</div>
+                </div>
+                <div class="congress-type">
+                    <span class="congress-action ${t.action}">${t.action}</span>
+                    <div class="congress-amount">${t.amount}</div>
+                </div>
             </div>
-        </div>
-    `).join('');
+        `).join('');
+    }
 
     count.textContent = trades.length;
 }

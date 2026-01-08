@@ -122,15 +122,26 @@ export async function fetchCategory(feeds) {
     return items.slice(0, 20);
 }
 
-// Fetch stock quote from Yahoo Finance
+// Fetch stock quote from Twelve Data API (free, no API key required for demo)
 export async function fetchQuote(symbol) {
     try {
-        const text = await fetchWithProxy(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`);
-        const data = JSON.parse(text);
-        if (data.chart?.result?.[0]) {
-            const meta = data.chart.result[0].meta;
-            const change = ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100;
-            return { price: meta.regularMarketPrice, change };
+        // Clean up symbol for Twelve Data (remove ^ prefix for indices)
+        let cleanSymbol = symbol.replace('^', '');
+        // Map common index symbols
+        const symbolMap = {
+            'GSPC': 'SPX',
+            'DJI': 'DJI',
+            'IXIC': 'IXIC'
+        };
+        cleanSymbol = symbolMap[cleanSymbol] || cleanSymbol;
+
+        const response = await fetch(`https://api.twelvedata.com/quote?symbol=${cleanSymbol}&apikey=demo`);
+        const data = await response.json();
+
+        if (data && data.close && !data.code) {
+            const price = parseFloat(data.close);
+            const change = parseFloat(data.percent_change) || 0;
+            return { price, change };
         }
     } catch (error) {
         console.error(`Error fetching ${symbol}:`, error);
@@ -223,26 +234,32 @@ export async function fetchCommodities() {
     return results;
 }
 
-// Fetch congressional trades
+// Fetch congressional trades news (original data source no longer available)
 export async function fetchCongressTrades() {
-    // Uses proxy to fetch from House Stock Watcher or similar
+    // Note: The House Stock Watcher S3 bucket is no longer publicly accessible.
+    // This now fetches congressional trading-related news instead.
     try {
-        const response = await fetchWithProxy('https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json');
-        const data = JSON.parse(response);
+        const apiUrl = 'https://api.rss2json.com/v1/api.json?rss_url=' +
+            encodeURIComponent('https://news.google.com/rss/search?q=congress+stock+trading+disclosure&hl=en-US&gl=US&ceid=US:en');
+        const response = await fetch(apiUrl);
+        const data = await response.json();
 
-        // Get last 20 trades
-        return data.slice(-20).reverse().map(t => ({
-            name: t.representative,
-            party: t.party === 'Democrat' ? 'D' : 'R',
-            ticker: t.ticker,
-            action: t.type.includes('Sale') ? 'SELL' : 'BUY',
-            amount: t.amount,
-            date: t.transaction_date
-        }));
+        if (data.status === 'ok' && data.items) {
+            return data.items.slice(0, 10).map(item => ({
+                name: item.title.substring(0, 50) + (item.title.length > 50 ? '...' : ''),
+                party: '-',
+                ticker: 'NEWS',
+                action: 'INFO',
+                amount: '',
+                date: item.pubDate?.split(' ')[0] || '',
+                link: item.link,
+                isNews: true
+            }));
+        }
     } catch (error) {
-        console.error('Error fetching congress trades:', error);
-        return [];
+        console.error('Error fetching congress trades news:', error);
     }
+    return [];
 }
 
 // Fetch whale transactions (crypto)
@@ -324,12 +341,18 @@ export async function fetchAINews() {
 // Fetch Fed balance sheet from FRED
 export async function fetchFedBalance() {
     try {
-        const text = await fetchWithProxy('https://api.stlouisfed.org/fred/series/observations?series_id=WALCL&sort_order=desc&limit=10&file_type=json&api_key=DEMO');
-        const data = JSON.parse(text);
+        // Use FRED CSV endpoint (no API key required)
+        const response = await fetch('https://fred.stlouisfed.org/graph/fredgraph.csv?id=WALCL&cosd=2024-01-01');
+        const text = await response.text();
 
-        if (data.observations && data.observations.length >= 2) {
-            const latest = parseFloat(data.observations[0].value);
-            const previous = parseFloat(data.observations[1].value);
+        // Parse CSV (format: observation_date,WALCL)
+        const lines = text.trim().split('\n').slice(1); // Skip header
+        if (lines.length >= 2) {
+            const latestLine = lines[lines.length - 1].split(',');
+            const previousLine = lines[lines.length - 2].split(',');
+
+            const latest = parseFloat(latestLine[1]);
+            const previous = parseFloat(previousLine[1]);
             const change = latest - previous;
             const changePercent = (change / previous) * 100;
 
@@ -337,7 +360,7 @@ export async function fetchFedBalance() {
                 value: latest / 1000000,
                 change: change / 1000000,
                 changePercent,
-                date: data.observations[0].date,
+                date: latestLine[0],
                 percentOfMax: (latest / 9000000) * 100
             };
         }
