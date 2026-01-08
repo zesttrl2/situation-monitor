@@ -220,10 +220,24 @@ export function updateFlashback(hoursAgo) {
 
 // Render the global map
 export async function renderGlobalMap(activityData, earthquakes = [], allNews = [], mapLayers, getMonitorHotspots, fetchFlightData, classifyAircraft, getAircraftArrow) {
+    // Check for required globals
+    if (typeof d3 === 'undefined') {
+        console.error('D3 not loaded');
+        return;
+    }
+    if (typeof topojson === 'undefined') {
+        console.error('TopoJSON not loaded');
+        return;
+    }
+
     // Cache allNews for popup access
     window.cachedAllNews = allNews;
 
     const panel = document.getElementById('mapPanel');
+    if (!panel) {
+        console.error('mapPanel element not found');
+        return;
+    }
     const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
 
     const isUSView = mapViewMode === 'us';
